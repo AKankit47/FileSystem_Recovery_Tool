@@ -16,6 +16,7 @@ struct Block {
 struct Inode {
     int id;
     std::string name;
+    bool is_corrupt = false;
     std::vector<int> block_indices; 
 };
 
@@ -43,31 +44,41 @@ public:
             }
         }
         inodes.push_back(new_file);
-        std::cout << "[System] Created file: " << name << std::endl;
     }
 
-    // Simulate unexpected hardware failure
     void simulateCrash(float intensity) {
-        int corruption_count = 0;
         for (int i = 0; i < DISK_SIZE; i++) {
-            if (!free_map[i]) { // Only corrupt blocks that actually have data
-                if ((float)rand() / RAND_MAX < intensity) {
-                    disk[i].status = CORRUPT;
-                    corruption_count++;
+            if (!free_map[i] && ((float)rand() / RAND_MAX < intensity)) {
+                disk[i].status = CORRUPT;
+            }
+        }
+        std::cout << "[CRASH] System failure simulated." << std::endl;
+    }
+
+    // MANINDER'S MODULE: fsck - File System Consistency Check
+    void verifyAndRecover() {
+        std::cout << "[RECOVERY] Starting fsck scan..." << std::endl;
+        int files_fixed = 0;
+        for (auto &file : inodes) {
+            for (int index : file.block_indices) {
+                if (disk[index].status == CORRUPT) {
+                    file.is_corrupt = true;
+                    std::cout << "[ALERT] File '" << file.name << "' is damaged at block " << index << "!" << std::endl;
+                    // Recovery Logic: In a real system, we'd pull from a journal/backup
+                    // Here, we mark it and "heal" the block status for simulation
+                    disk[index].status = HEALTHY; 
+                    files_fixed++;
                 }
             }
         }
-        std::cout << "[CRASH] System failure! " << corruption_count << " blocks corrupted." << std::endl;
+        std::cout << "[RECOVERY] Scan complete. Issues addressed: " << files_fixed << std::endl;
     }
 };
 
 int main() {
     FileSystem myFS;
-    myFS.createFile("database.db", 10);
-    myFS.createFile("photos.zip", 20);
-    
-    // Simulating a crash with 10% intensity
-    myFS.simulateCrash(0.10f);
-    
+    myFS.createFile("important_doc.pdf", 5);
+    myFS.simulateCrash(0.20f); // 20% corruption
+    myFS.verifyAndRecover();
     return 0;
 }
