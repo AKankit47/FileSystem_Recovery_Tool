@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <ctime>
+#include <algorithm>
 
 const int BLOCK_SIZE = 4096;
 const int DISK_SIZE = 1024;
@@ -44,6 +45,7 @@ public:
             }
         }
         inodes.push_back(new_file);
+        std::cout << "[System] Allocated " << name << " (" << num_blocks << " blocks)." << std::endl;
     }
 
     void simulateCrash(float intensity) {
@@ -55,30 +57,30 @@ public:
         std::cout << "[CRASH] System failure simulated." << std::endl;
     }
 
-    // MANINDER'S MODULE: fsck - File System Consistency Check
-    void verifyAndRecover() {
-        std::cout << "[RECOVERY] Starting fsck scan..." << std::endl;
-        int files_fixed = 0;
+    // PRITAM'S MODULE: Optimization & Defragmentation
+    void defragment() {
+        std::cout << "[OPTIMIZE] Starting Defragmentation..." << std::endl;
+        int write_ptr = 0;
         for (auto &file : inodes) {
-            for (int index : file.block_indices) {
-                if (disk[index].status == CORRUPT) {
-                    file.is_corrupt = true;
-                    std::cout << "[ALERT] File '" << file.name << "' is damaged at block " << index << "!" << std::endl;
-                    // Recovery Logic: In a real system, we'd pull from a journal/backup
-                    // Here, we mark it and "heal" the block status for simulation
-                    disk[index].status = HEALTHY; 
-                    files_fixed++;
-                }
+            std::vector<int> new_indices;
+            for (size_t j = 0; j < file.block_indices.size(); j++) {
+                // In a real system, we'd move the actual data in disk[write_ptr]
+                new_indices.push_back(write_ptr);
+                free_map[write_ptr] = false;
+                write_ptr++;
             }
+            file.block_indices = new_indices;
         }
-        std::cout << "[RECOVERY] Scan complete. Issues addressed: " << files_fixed << std::endl;
+        // Mark remaining disk as free
+        for (int i = write_ptr; i < DISK_SIZE; i++) free_map[i] = true;
+        std::cout << "[OPTIMIZE] Disk compacted. Sequential access optimized." << std::endl;
     }
 };
 
 int main() {
     FileSystem myFS;
-    myFS.createFile("important_doc.pdf", 5);
-    myFS.simulateCrash(0.20f); // 20% corruption
-    myFS.verifyAndRecover();
+    myFS.createFile("system.sys", 10);
+    myFS.createFile("user_data.dat", 15);
+    myFS.defragment();
     return 0;
 }
